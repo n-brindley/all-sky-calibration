@@ -1,6 +1,8 @@
 import numpy as np
 
-
+### NOTE, IMPORTANT: this version assumes the optical axis of the instrument is aligned with the geographic zenith, 
+### which won't be valid in general. It works well enough when they are close, and is convenient because x,y coords can be
+### obtained by solving analytically for a given az, el. A more robust version coming soon.
 
 #### functions:
 #### back2x: finds image x coordinate from given azimuth and elevation

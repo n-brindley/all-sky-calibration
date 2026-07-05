@@ -450,7 +450,7 @@ def geo_zenith(popt,TYPE = None):
 composite = composite_image(r'/path/to/test_ims/')
 ##detrend_im = detrend_image(r'/users/nick/documents/phd/codes/Sony2016-01-11/LYR-Sony-110116_190014.jpg',Rlim = 2250,Blim = 10,L = 50,SIG = 50/4)
 
-### SCMOS EXAMPLE: this is a good fit: np.array([ 3.49199330e+02,  4.90378864e+02, -2.78998473e+00,  2.94935836e-03, -1.18548044e-01,  3.94774827e+03])
+### SCMOS EXAMPLE: this is a good fit for rectilinear: np.array([ 3.49199330e+02,  4.90378864e+02, -2.78998473e+00,  2.94935836e-03, -1.18548044e-01,  3.94774827e+03])
 ### popt[0] = optical axis x coord; popt[1] = optical axis y coord; popt[2] = rotation1 ; popt[3] = rotation2; popt[4] = rotation3; popt[5] = focal length
 ### the above is a very good fit, but the optical axis seems a bit far from the centre of the image.
 detrend_im = detrend_image(composite,Rlim = 500,Blim = 10,L = 20,SIG = 20/4,IMTYPE = 'SCMOS',FROM_FILE = False)
@@ -468,18 +468,27 @@ second = 2
 clicked_x,clicked_y,valid,AZ,EL,VM,SAO=select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hour,minute,second,sao_dir,\
                                                     elevation_lim = [70,90],how_many = 1000,save_clicks = False,FIND = True)
 dims = np.shape(detrend_im)
-bounds = [(0,dims[1]),\
+TYPE = 'rectilinear'
+if TYPE in ['rectilinear','orthographic','equidistant']:
+    bounds = [(0,dims[1]),\
                   (0,dims[0]),\
                   (-np.pi,np.pi),\
                   (-np.pi,np.pi),\
                   (-np.pi,np.pi),\
-                  (dims[1]/8,dims[1]*4),\
-                  (0.5,3)]
-popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'rectilinear',x0 = None,init = 'sobol',popsize = 100,bounds = bounds)
+                  (dims[1]/8,dims[1]*4)]
+else:
+    bounds = [(0,dims[1]),\
+                      (0,dims[0]),\
+                      (-np.pi,np.pi),\
+                      (-np.pi,np.pi),\
+                      (-np.pi,np.pi),\
+                      (dims[1]/8,dims[1]*4),\
+                      (0.5,3)]
+popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = TYPE,x0 = None,init = 'sobol',popsize = 100,bounds = bounds)
 Nfit = 2
 ### refining the fit a bit
 for _ in range(Nfit):
-    popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'rectilinear',x0 = popt,init = 'random',popsize = 100,bounds = get_bounds(popt))
+    popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = TYPE,x0 = popt,init = 'random',popsize = 100,bounds = get_bounds(popt))
     print(popt)
     
 

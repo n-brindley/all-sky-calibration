@@ -380,5 +380,6 @@ clicked_x,clicked_y,valid,AZ,EL,VM,SAO=select_stars(cam_geodet_lat,cam_geolon,ca
     
 popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'orthographic',x0 = None,init = 'sobol',popsize = 500) ## not sure if orthographic is correct
 ### popt = array([ 1.42382274e+03,  1.45396077e+03,  2.77101289e-03, -2.65765167e+00,1.12851289e+03]) is an ok fit
+### For narrow FOV camera, use rectilinear?
             
     

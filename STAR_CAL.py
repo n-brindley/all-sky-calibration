@@ -92,6 +92,8 @@ def get_xy(popt,az,el,TYPE = 'orthographic'):
                      [0,np.cos(gamma),-np.sin(gamma)],
                      [0,np.sin(gamma),np.cos(gamma)]])
 
+    # column vectors of R = yaw@pitch@roll expresses the camera optical axis in ENU frame
+
     basis_cam = roll.T@(pitch.T@(yaw.T@ENU))
     theta = np.arccos(np.clip(basis_cam[2],-1,1))
     phi = np.arctan2(basis_cam[1],basis_cam[0])### arctan(y/x), y in camera is not North.
@@ -159,7 +161,7 @@ def get_azel(popt,x,y,TYPE = None):
     roll = np.array([[1,0,0],
                      [0,np.cos(gamma),-np.sin(gamma)],
                      [0,np.sin(gamma),np.cos(gamma)]])
-    
+    # column vectors of R = yaw@pitch@roll expresses the camera optical axis in ENU frame
     
     ENU = yaw@(pitch@(roll@basis_cam))
     #print(np.shape(ENU))

@@ -3,7 +3,7 @@ Various Python codes to convert azimuth and elevation to image x,y coordinates (
 
 calibration_utils.py only really works if the camera optical axis is close to the geographic zenith (it assumes they are aligned).
 
-STAR_CAL.py is more robust, and includes the whole pipeline for getting the star (x,y) coordinates in the image.
+STAR_CAL.py is more robust, and includes the whole pipeline for getting the star (x,y) coordinates in the image (recommended to use this one).
 
 Thanks to UNIS and Noora Partamies for providing the example all-sky image.
 

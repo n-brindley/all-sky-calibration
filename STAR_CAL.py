@@ -272,7 +272,6 @@ def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hou
             fig = plt.figure(figsize = (13,7))
             def onclick(event):
                 global counter_star,dims
-                # only accept clicks inside axes
                 if event.inaxes is None:
                     return
 
@@ -290,7 +289,6 @@ def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hou
                 clicked_y[counter_star] = y
                 counter_star +=1
 
-                # close figure to unblock loop
                 plt.close()
             def on_click_end(event):
                 global stop

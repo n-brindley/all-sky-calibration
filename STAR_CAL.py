@@ -453,6 +453,8 @@ composite = composite_image(r'/path/to/test_ims/')
 ### SCMOS EXAMPLE: this is a good fit for rectilinear: np.array([3.49200138e+02, 4.90383673e+02, 3.51607870e-01, 3.13864310e+00,3.02304340e+00, 3.94774814e+03])
 ### popt[0] = optical axis x coord; popt[1] = optical axis y coord; popt[2] = rotation1 ; popt[3] = rotation2; popt[4] = rotation3; popt[5] = focal length
 ### the above is a very good fit, but the optical axis seems a bit far from the centre of the image.
+
+### when TYPE not in ['rectilinear','orthographic','equidistant'], popt[5] = focal length * k1; popt[6] = k2, where k1, k2 are lens parameters
 detrend_im = detrend_image(composite,Rlim = 500,Blim = 10,L = 20,SIG = 20/4,IMTYPE = 'SCMOS',FROM_FILE = False)
 
 sao_dir = r'/path/to/sao_dir/'

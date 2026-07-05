@@ -71,7 +71,12 @@ def get_xy(popt,az,el,TYPE = 'orthographic'):
     #E = np.sin(az)*np.cos(el)
     #U = np.sin(el)
 
-    oax,oay,alpha,beta,gamma,f = popt
+    oax = popt[0]
+    oay = popt[1]
+    alpha = popt[2]
+    beta = popt[3]
+    gamma = popt[4]
+    cam_params = popt[5:]
 
     ENU = np.array([np.cos(el)*np.sin(az),
                     np.cos(el)*np.cos(az),
@@ -92,15 +97,15 @@ def get_xy(popt,az,el,TYPE = 'orthographic'):
     phi = np.arctan2(basis_cam[1],basis_cam[0])### arctan(y/x), y in camera is not North.
     ###phi is measured from the +ve x-axis, increasing towards positive y-axis
     if TYPE == 'rectilinear':
-        r = f*np.tan(theta)
+        r = cam_params[0]*np.tan(theta)
     elif TYPE == 'stereographic':
-        r = 2*f*np.tan(theta/2)
+        r = cam_params[0]*np.tan(theta/cam_params[1])
     elif TYPE == 'equidistant':
-        r = f*theta
+        r = cam_params[0]*theta
     elif TYPE == 'equisolid_angle':
-        r = 2*f*np.sin(theta/2)
+        r = cam_params[0]*np.sin(theta/cam_params[1])
     elif TYPE == 'orthographic':
-        r = f*np.sin(theta)
+        r = cam_params[0]*np.sin(theta)
     else:
         raise ValueError('specify lens type')
 
@@ -114,7 +119,7 @@ def get_azel(popt,x,y,TYPE = None):
     alpha = popt[2]
     beta = popt[3]
     gamma = popt[4]
-    f = popt[5]
+    cam_params = popt[5:]
     from_centre = np.sqrt((x-oax)**2 + (y-oay)**2) ## distance from optical axis
     phi = np.arctan2(y-oay,x-oax)
     #print(np.shape(phi))
@@ -123,21 +128,21 @@ def get_azel(popt,x,y,TYPE = None):
     ## theta is the incidence angle, i.e., the angle from the optical axis
     ERRFLAG = 0
     if TYPE == 'rectilinear':
-        theta = np.arctan(from_centre/f)
+        theta = np.arctan(from_centre/cam_params[0])
     elif TYPE == 'stereographic':
-        theta = 2*np.arctan(from_centre/(2*f))
+        theta = cam_params[1]*np.arctan(from_centre/cam_params[0])
     elif TYPE == 'equidistant':
-        theta = from_centre/f
+        theta = from_centre/cam_params[0]
     elif TYPE == 'equisolid_angle':
-        if f<np.max(from_centre)/2:
-            f = np.max(from_centre)/2
+        if cam_params[0]<np.max(from_centre):
+            cam_params[0] = np.max(from_centre)
             ERRFLAG = 1
-        theta = 2*np.arcsin(from_centre/(2*f))
+        theta = cam_params[1]*np.arcsin(from_centre/cam_params[0])
     elif TYPE == 'orthographic':
-        if f<np.max(from_centre):
-            f = np.max(from_centre)
+        if cam_params[0]<np.max(from_centre):
+            cam_params[0] = np.max(from_centre)
             ERRFLAG = 1
-        theta = np.arcsin(from_centre/f)
+        theta = np.arcsin(from_centre/cam_params[0])
     else:
         raise ValueError('specify lens type')
 
@@ -408,7 +413,7 @@ def geo_zenith(popt,TYPE = None):
     alpha = popt[2]
     beta = popt[3]
     gamma = popt[4]
-    f = popt[5]
+    cam_params = popt[5:]
     yaw = np.array([[np.cos(alpha),-np.sin(alpha),0],
                    [np.sin(alpha),np.cos(alpha),0],
                    [0,0,1]])
@@ -426,15 +431,15 @@ def geo_zenith(popt,TYPE = None):
     phi = np.arctan2(zen_cam_basis[1],zen_cam_basis[0])
 
     if TYPE == 'rectilinear':
-        r = f*np.tan(theta)
+        r = cam_params[0]*np.tan(theta)
     elif TYPE == 'stereographic':
-        r = 2*f*np.tan(theta/2)
+        r = cam_params[0]*np.tan(theta/cam_params[1])
     elif TYPE == 'equidistant':
-        r = f*theta
+        r = cam_params[0]*theta
     elif TYPE == 'equisolid_angle':
-        r = 2*f*np.sin(theta/2)
+        r = cam_params[0]*np.sin(theta/cam_params[1])
     elif TYPE == 'orthographic':
-        r = f*np.sin(theta)
+        r = cam_params[0]*np.sin(theta)
     else:
         raise ValueError('specify lens type')
     x = oax + r * np.cos(phi)
@@ -468,7 +473,8 @@ bounds = [(0,dims[1]),\
                   (-np.pi,np.pi),\
                   (-np.pi,np.pi),\
                   (-np.pi,np.pi),\
-                  (dims[1]/8,dims[1]*4)]
+                  (dims[1]/8,dims[1]*4),\
+                  (0.5,3)]
 popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'rectilinear',x0 = None,init = 'sobol',popsize = 100,bounds = bounds)
 Nfit = 2
 ### refining the fit a bit

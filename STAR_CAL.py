@@ -450,7 +450,7 @@ def geo_zenith(popt,TYPE = None):
 composite = composite_image(r'/path/to/test_ims/')
 ##detrend_im = detrend_image(r'/users/nick/documents/phd/codes/Sony2016-01-11/LYR-Sony-110116_190014.jpg',Rlim = 2250,Blim = 10,L = 50,SIG = 50/4)
 
-### SCMOS EXAMPLE: this is a good fit for rectilinear: np.array([ 3.49199330e+02,  4.90378864e+02, -2.78998473e+00,  2.94935836e-03, -1.18548044e-01,  3.94774827e+03])
+### SCMOS EXAMPLE: this is a good fit for rectilinear: np.array([3.49200138e+02, 4.90383673e+02, 3.51607870e-01, 3.13864310e+00,3.02304340e+00, 3.94774814e+03])
 ### popt[0] = optical axis x coord; popt[1] = optical axis y coord; popt[2] = rotation1 ; popt[3] = rotation2; popt[4] = rotation3; popt[5] = focal length
 ### the above is a very good fit, but the optical axis seems a bit far from the centre of the image.
 detrend_im = detrend_image(composite,Rlim = 500,Blim = 10,L = 20,SIG = 20/4,IMTYPE = 'SCMOS',FROM_FILE = False)

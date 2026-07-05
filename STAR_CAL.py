@@ -4,6 +4,7 @@ from READ_SAO import read_sao,tt_mjs,rd_ae
 from scipy.optimize import differential_evolution
 from scipy.signal import convolve2d
 from matplotlib.widgets import TextBox
+import glob
 import os
 def rgb2gray(rgb):
     r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
@@ -46,9 +47,13 @@ def gaussian_kernel(L=15, sigma=15/4):
     kernel = np.outer(gauss, gauss)
     return kernel / np.sum(kernel)
 
-def detrend_image(raw_im_file,L,SIG,Rlim = 2500,Blim = 10):
-    test_im = plt.imread(raw_im_file)
-    test_im = rgb2gray(test_im)
+def detrend_image(raw_im_file,L,SIG,Rlim = 2500,Blim = 10,IMTYPE = 'SCMOS',FROM_FILE = True):
+    if FROM_FILE:
+        test_im = plt.imread(raw_im_file)
+        if IMTYPE == 'ASC':
+            test_im = rgb2gray(test_im)
+    else:
+        test_im = raw_im_file
     dims = np.shape(test_im)
     yvi,xvi = np.meshgrid(np.arange(dims[0]),np.arange(dims[1]),indexing= 'ij')
     cen_x = dims[1]//2
@@ -66,20 +71,23 @@ def get_xy(popt,az,el,TYPE = 'orthographic'):
     #E = np.sin(az)*np.cos(el)
     #U = np.sin(el)
 
-    oax,oay,alpha,beta,f = popt
+    oax,oay,alpha,beta,gamma,f = popt
 
     ENU = np.array([np.cos(el)*np.sin(az),
                     np.cos(el)*np.cos(az),
                     np.sin(el)])
 
-    Ry = np.array([[np.cos(alpha),0,np.sin(alpha)],
-                   [0,1,0],
-                   [-np.sin(alpha),0,np.cos(alpha)]])
-    Rz = np.array([[np.cos(beta),-np.sin(beta),0],
-                   [np.sin(beta),np.cos(beta),0],
+    yaw = np.array([[np.cos(alpha),-np.sin(alpha),0],
+                   [np.sin(alpha),np.cos(alpha),0],
                    [0,0,1]])
+    pitch = np.array([[np.cos(beta),0,np.sin(beta)],
+                   [0,1,0],
+                   [-np.sin(beta),0,np.cos(beta)]])
+    roll = np.array([[1,0,0],
+                     [0,np.cos(gamma),-np.sin(gamma)],
+                     [0,np.sin(gamma),np.cos(gamma)]])
 
-    basis_cam = Ry.T@(Rz.T@ENU)
+    basis_cam = roll.T@(pitch.T@(yaw.T@ENU))
     theta = np.arccos(np.clip(basis_cam[2],-1,1))
     phi = np.arctan2(basis_cam[1],basis_cam[0])### arctan(y/x), y in camera is not North.
     ###phi is measured from the +ve x-axis, increasing towards positive y-axis
@@ -105,7 +113,8 @@ def get_azel(popt,x,y,TYPE = None):
     oay = popt[1]
     alpha = popt[2]
     beta = popt[3]
-    f = popt[4]
+    gamma = popt[4]
+    f = popt[5]
     from_centre = np.sqrt((x-oax)**2 + (y-oay)**2) ## distance from optical axis
     phi = np.arctan2(y-oay,x-oax)
     #print(np.shape(phi))
@@ -136,14 +145,18 @@ def get_azel(popt,x,y,TYPE = None):
     basis_cam = np.array([np.sin(theta)*np.cos(phi),
                       np.sin(theta)*np.sin(phi),
                       np.cos(theta)])
-    Ry = np.array([[np.cos(alpha),0,np.sin(alpha)],
-                   [0,1,0],
-                   [-np.sin(alpha),0,np.cos(alpha)]])
-    Rz = np.array([[np.cos(beta),-np.sin(beta),0],
-                   [np.sin(beta),np.cos(beta),0],
+    yaw = np.array([[np.cos(alpha),-np.sin(alpha),0],
+                   [np.sin(alpha),np.cos(alpha),0],
                    [0,0,1]])
+    pitch = np.array([[np.cos(beta),0,np.sin(beta)],
+                   [0,1,0],
+                   [-np.sin(beta),0,np.cos(beta)]])
+    roll = np.array([[1,0,0],
+                     [0,np.cos(gamma),-np.sin(gamma)],
+                     [0,np.sin(gamma),np.cos(gamma)]])
     
-    ENU = Rz@(Ry@basis_cam)
+    
+    ENU = yaw@(pitch@(roll@basis_cam))
     #print(np.shape(ENU))
     el = np.arctan2(ENU[2], np.sqrt(ENU[0]**2 + ENU[1]**2))
     az = np.arctan2(ENU[0], ENU[1])
@@ -162,7 +175,8 @@ def minimiser(popt,star_x,star_y,ref_az,ref_el,TYPE):
     return resid+ERRFLAG*1e10
     
 
-def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hour,minute,second,sao_dir,elevation_lim = 20,how_many = 1000,save_clicks = False,FIND = True):
+def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hour,minute,second,sao_dir,elevation_lim = 20,\
+                 how_many = 1000,save_clicks = False,FIND = True):
     '''
     cam_geodet_lat: camera geodetic latitude (deg)
     cam_geolon: camera longitude (deg)
@@ -192,7 +206,7 @@ def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hou
     for i in range(len(ra0)):
         az,el = rd_ae(ra0[i],dec0[i],mjs,camera_geocen_lat,cam_geolon,deg_input = False)
         mag = val_ref * 10**(0.4 * (mag_ref-VMAG[i]))
-        if el>=np.radians(elevation_lim):
+        if el>=np.radians(elevation_lim[0]) and el<np.radians(elevation_lim[1]):
             AZ[counter] = az
             EL[counter] = el
             VM[counter] = mag
@@ -221,6 +235,7 @@ def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hou
         ax.set_theta_zero_location('N')
         ax.set_theta_direction(1)
         ax.set_facecolor('k')
+        
 
         ax2 = fig.add_subplot(122)
         im = ax2.imshow(detrend_im,cmap = 'magma')
@@ -252,6 +267,8 @@ def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hou
         vmin, vmax = im.get_clim()
 
         ax.scatter(AZ,90-np.degrees(EL),s = (15*VM/np.max(VM)*72.0/fig.dpi)**2,c = 'w')
+        for i in range(5):
+            ax.text(AZ[i],90-np.degrees(EL[i]),str(SAO[i]),color = 'y')
         ax.set_title('Set vmax and rotation so the stars are visible and the star map is orientated conveniently.\nClick outside the axes when you are done')
         ax.grid(False)
         rotation = 0
@@ -272,6 +289,7 @@ def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hou
             fig = plt.figure(figsize = (13,7))
             def onclick(event):
                 global counter_star,dims
+                # only accept clicks inside axes
                 if event.inaxes is None:
                     return
 
@@ -289,6 +307,7 @@ def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hou
                 clicked_y[counter_star] = y
                 counter_star +=1
 
+                # close figure to unblock loop
                 plt.close()
             def on_click_end(event):
                 global stop
@@ -337,16 +356,21 @@ def select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hou
     return clicked_x,clicked_y,valid,AZ,EL,VM,SAO
 
 
-def fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'orthographic',x0 = None,init = 'sobol',popsize = 500):
-
+def fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'orthographic',x0 = None,init = 'sobol',popsize = 500,bounds = None):
+    
     ### you might need to play around with the fitting popsize etc to get a good fit
     dims = np.shape(detrend_im)
+    if not bounds:
+        bounds = [(-dims[1],2*dims[1]),\
+                  (-dims[0],2*dims[0]),\
+                  (-np.pi/2,np.pi/2),\
+                  (-np.pi,np.pi),\
+                  (-np.pi,np.pi),\
+                  (dims[1]/8,dims[1]*2)]
+        
+    
     args = (clicked_x[valid],clicked_y[valid],AZ[valid],EL[valid],PROJECTION)
-    res = differential_evolution(minimiser,x0 = x0,args = args,init = init,tol = 1e-8,disp = True,bounds = [(0,dims[1]),\
-                                                                             (0,dims[0]),\
-                                                                             (-np.pi/2,np.pi/2),\
-                                                                             (-np.pi,np.pi),\
-                                                                             (dims[1]/8,dims[1]*2)],popsize = popsize)
+    res = differential_evolution(minimiser,x0 = x0,args = args,init = init,tol = 1e-8,bounds = bounds,disp = True,popsize = popsize)
     popt = res.x
 
     star_az,star_el,_ =get_azel(popt,clicked_x[valid],clicked_y[valid],TYPE = PROJECTION)
@@ -359,10 +383,55 @@ def fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'orthogra
     plt.show()
     return popt
 
-### EXAMPLE ###
-detrend_im = detrend_image(r'/path/to/image/Sony2016-01-11/LYR-Sony-110116_190014.jpg',Rlim = 2250,Blim = 10,L = 50,SIG = 50/4)
+
+def composite_image(base_dir):
+    files = glob.glob(os.path.join(base_dir,'*.tif'))
+    for i in range(len(files)):
+        if i ==0:
+            im = plt.imread(files[i])
+        else:
+            im+=plt.imread(files[i])
+    return im
+
+def get_bounds(popt):
+    bounds = []
+    for i in range(len(popt)):
+        if popt[i]>0:
+            bounds.append((popt[i]*0.5,popt[i]*1.5))
+        else:
+            bounds.append((popt[i]*1.5,popt[i]*0.5))
+    return bounds
+
+def geo_zenith(popt):
+    alpha = popt[2]
+    beta = popt[3]
+    gamma = popt[4]
+    yaw = np.array([[np.cos(alpha),-np.sin(alpha),0],
+                   [np.sin(alpha),np.cos(alpha),0],
+                   [0,0,1]])
+    pitch = np.array([[np.cos(beta),0,np.sin(beta)],
+                   [0,1,0],
+                   [-np.sin(beta),0,np.cos(beta)]])
+    roll = np.array([[1,0,0],
+                     [0,np.cos(gamma),-np.sin(gamma)],
+                     [0,np.sin(gamma),np.cos(gamma)]])
+
+    zen = np.array([0,0,1])
+
+    zen_cam_basis = roll.T@(pitch.T@(yaw.T@zen))
+    return zen_cam_basis
+        
+   
+composite = composite_image(r'/path/to/test_ims/')
+##detrend_im = detrend_image(r'/users/nick/documents/phd/codes/Sony2016-01-11/LYR-Sony-110116_190014.jpg',Rlim = 2250,Blim = 10,L = 50,SIG = 50/4)
+
+### SCMOS EXAMPLE: this is a good fit: np.array([ 3.49199330e+02,  4.90378864e+02, -2.78998473e+00,  2.94935836e-03, -1.18548044e-01,  3.94774827e+03])
+### popt[0] = optical axis x coord; popt[1] = optical axis y coord; popt[2] = rotation1 ; popt[3] = rotation2; popt[4] = rotation3; popt[5] = focal length
+### the above is a very good fit, but the optical axis seems a bit far from the centre of the image.
+detrend_im = detrend_image(composite,Rlim = 500,Blim = 10,L = 20,SIG = 20/4,IMTYPE = 'SCMOS',FROM_FILE = False)
+
 sao_dir = r'/path/to/sao_dir/'
-cam_geodet_lat = 78.14796 ## e.g. KHO
+cam_geodet_lat = 78.14796
 cam_geolon = 16.0430002
 cam_alt = 0.520
 year = 2016
@@ -370,14 +439,22 @@ month = 1
 day = 11
 hour = 19
 minute = 0
-second = 14
+second = 2
 clicked_x,clicked_y,valid,AZ,EL,VM,SAO=select_stars(cam_geodet_lat,cam_geolon,cam_alt,detrend_im,year,month,day,hour,minute,second,sao_dir,\
-                                                    elevation_lim = 20,how_many = 500,save_clicks = True,FIND = True)
-
-
+                                                    elevation_lim = [70,90],how_many = 1000,save_clicks = False,FIND = True)
+dims = np.shape(detrend_im)
+bounds = [(0,dims[1]),\
+                  (0,dims[0]),\
+                  (-np.pi,np.pi),\
+                  (-np.pi,np.pi),\
+                  (-np.pi,np.pi),\
+                  (dims[1]/8,dims[1]*4)]
+popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'rectilinear',x0 = None,init = 'sobol',popsize = 100,bounds = bounds)
+Nfit = 2
+### refining the fit a bit
+for _ in range(Nfit):
+    popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'rectilinear',x0 = popt,init = 'random',popsize = 100,bounds = get_bounds(popt))
+    print(popt)
     
-popt = fit(detrend_im,clicked_x,clicked_y,valid,AZ,EL,VM,SAO,PROJECTION = 'orthographic',x0 = None,init = 'sobol',popsize = 500) ## not sure if orthographic is correct
-### popt = array([ 1.42382274e+03,  1.45396077e+03,  2.77101289e-03, -2.65765167e+00,1.12851289e+03]) is an ok fit
-### For narrow FOV camera, use rectilinear?
-            
+
     

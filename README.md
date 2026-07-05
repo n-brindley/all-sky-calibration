@@ -5,5 +5,7 @@ calibration_utils.py only really works if the camera optical axis is close to th
 
 STAR_CAL.py is more robust, and includes the whole pipeline for getting the star (x,y) coordinates in the image.
 
+Thanks to UNIS and Noora Partamies for providing the example all-sky image.
+
 The SAO star catalogue is available at https://heasarc.gsfc.nasa.gov/w3browse/star-catalog/sao.html
 READ_SAO.py is intended to read the file available there.

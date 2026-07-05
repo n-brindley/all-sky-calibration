@@ -402,10 +402,13 @@ def get_bounds(popt):
             bounds.append((popt[i]*1.5,popt[i]*0.5))
     return bounds
 
-def geo_zenith(popt):
+def geo_zenith(popt,TYPE = None):
+    oax = popt[0]
+    oay = popt[1]
     alpha = popt[2]
     beta = popt[3]
     gamma = popt[4]
+    f = popt[5]
     yaw = np.array([[np.cos(alpha),-np.sin(alpha),0],
                    [np.sin(alpha),np.cos(alpha),0],
                    [0,0,1]])
@@ -419,7 +422,24 @@ def geo_zenith(popt):
     zen = np.array([0,0,1])
 
     zen_cam_basis = roll.T@(pitch.T@(yaw.T@zen))
-    return zen_cam_basis
+    theta = np.arccos(np.clip(zen_cam_basis[2],-1,1))
+    phi = np.arctan2(zen_cam_basis[1],zen_cam_basis[0])
+
+    if TYPE == 'rectilinear':
+        r = f*np.tan(theta)
+    elif TYPE == 'stereographic':
+        r = 2*f*np.tan(theta/2)
+    elif TYPE == 'equidistant':
+        r = f*theta
+    elif TYPE == 'equisolid_angle':
+        r = 2*f*np.sin(theta/2)
+    elif TYPE == 'orthographic':
+        r = f*np.sin(theta)
+    else:
+        raise ValueError('specify lens type')
+    x = oax + r * np.cos(phi)
+    y = oay + r * np.sin(phi)
+    return x,y
         
    
 composite = composite_image(r'/path/to/test_ims/')

@@ -457,6 +457,8 @@ composite = composite_image(r'/path/to/test_ims/')
 ### the above is a very good fit, but the optical axis seems a bit far from the centre of the image.
 
 ### when TYPE not in ['rectilinear','orthographic','equidistant'], popt[5] = focal length * k1; popt[6] = k2, where k1, k2 are lens parameters
+### If the fitting routine is struggling, try np.flipud on detrend_im (i.e., if you have to do plt.imshow(im,origin = 'lower') to get the stars to match the star map,
+### then you need to flip the image prior to clicking for the x,y coords.
 detrend_im = detrend_image(composite,Rlim = 500,Blim = 10,L = 20,SIG = 20/4,RGB_CONV = False,FROM_FILE = False)
 
 sao_dir = r'/path/to/sao_dir/'
